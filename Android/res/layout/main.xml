@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/surfacelayout"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
+    <com.example.android.camera.CameraPreview
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/surface_view">
+    </com.example.android.camera.CameraPreview>
+    <com.example.android.camera.ViewFinderView
+        android:id="@+id/viewfinder_view"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#0000" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="2000dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textSize="12sp" />
+    <ImageView
+        android:id="@+id/imageView1"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_above="@+id/textView2"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="19dp" />
+    <Button
+        android:id="@+id/btn_face_detection"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_above="@+id/imageView1"
+        android:layout_alignLeft="@+id/imageView1"
+        android:scaleType="fitXY"
+        android:text="StartFaceDetection" />
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="2000dp"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/textView2"
+        android:layout_alignParentLeft="true"
+        android:layout_toLeftOf="@+id/imageView1"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textSize="36sp" />
+
+</RelativeLayout>
+

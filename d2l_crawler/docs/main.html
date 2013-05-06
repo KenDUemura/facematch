@@ -1,0 +1,200 @@
+<!DOCTYPE html>  <html> <head>   <title>main.js</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               main.js             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>                            </td>             <td class="code">               <div class="highlight"><pre><span class="cm">/**</span>
+<span class="cm">  d2l_crawler</span>
+<span class="cm">*/</span></pre></div>             </td>           </tr>                               <tr id="section-2">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-2">&#182;</a>               </div>               <p>Desire 2 Learn Classlist Crawler as of 2012/11/26</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-3">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-3">&#182;</a>               </div>               <p>Loading Node.js modules</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="kd">var</span> <span class="nx">argv</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;optimist&#39;</span><span class="p">).</span><span class="nx">argv</span>
+  <span class="p">,</span> <span class="nx">jsdom</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;jsdom&#39;</span><span class="p">)</span>
+  <span class="p">,</span> <span class="nx">async</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;async&#39;</span><span class="p">)</span>
+  <span class="p">,</span> <span class="nx">fs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;fs&quot;</span><span class="p">)</span>
+  <span class="p">,</span> <span class="nx">jquery</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="s2">&quot;./src/jquery.js&quot;</span><span class="p">).</span><span class="nx">toString</span><span class="p">()</span>
+  <span class="p">,</span> <span class="nx">request</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;request&#39;</span><span class="p">);</span></pre></div>             </td>           </tr>                               <tr id="section-4">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-4">&#182;</a>               </div>               <p>Default variables</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="kd">var</span> <span class="nx">base</span> <span class="o">=</span> <span class="s1">&#39;https://sjsu.desire2learn.com&#39;</span>
+  <span class="p">,</span> <span class="nx">login</span> <span class="o">=</span> <span class="nx">base</span> <span class="o">+</span> <span class="s1">&#39;/d2l/lp/auth/login/login.d2l&#39;</span>
+  <span class="p">,</span> <span class="nx">logout</span> <span class="o">=</span> <span class="nx">base</span> <span class="o">+</span> <span class="s1">&#39;/d2l/logout&#39;</span>
+  <span class="p">,</span> <span class="nx">viewprofileImage</span> <span class="o">=</span> <span class="nx">base</span> <span class="o">+</span> <span class="s1">&#39;/d2l/common/viewprofileimage.d2l?&#39;</span>
+  <span class="p">,</span> <span class="nx">ou</span> <span class="o">=</span> <span class="nx">argv</span><span class="p">.</span><span class="nx">ou</span>
+  <span class="p">,</span> <span class="nx">classlist</span> <span class="o">=</span> <span class="nx">base</span> <span class="o">+</span> <span class="s1">&#39;/d2l/lms/classlist/classlist.d2l?ou=&#39;</span> <span class="o">+</span> <span class="nx">ou</span>
+  <span class="p">,</span> <span class="nx">waitTime</span> <span class="o">=</span> <span class="nx">argv</span><span class="p">.</span><span class="nx">wait</span> <span class="o">||</span> <span class="mi">3000</span>
+  <span class="p">,</span> <span class="nx">auth</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="nx">userName</span><span class="o">:</span><span class="nx">argv</span><span class="p">.</span><span class="nx">username</span><span class="p">,</span>
+    <span class="nx">password</span><span class="o">:</span><span class="nx">argv</span><span class="p">.</span><span class="nx">password</span><span class="p">,</span>
+    <span class="nx">Login</span><span class="o">:</span><span class="s1">&#39;Login&#39;</span>
+  <span class="p">};</span></pre></div>             </td>           </tr>                               <tr id="section-5">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-5">&#182;</a>               </div>               <p>crawl steps.
+1. Login to starts session
+2. Parse Classlist page
+3. Walk through each student's profile
+4. Store Image into img directory
+5. Logout
+6. Store Metadata into MongoDB</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="kd">function</span> <span class="nx">crawl</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Authentication: &quot;</span><span class="p">,</span> <span class="nx">auth</span><span class="p">);</span></pre></div>             </td>           </tr>                               <tr id="section-6">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-6">&#182;</a>               </div>               <p>Logging in by posting authentication information.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nx">request</span><span class="p">.</span><span class="nx">post</span><span class="p">({</span><span class="nx">url</span><span class="o">:</span> <span class="nx">login</span><span class="p">,</span> <span class="nx">form</span><span class="o">:</span> <span class="nx">auth</span><span class="p">},</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed to login&quot;</span><span class="p">);</span>
+      <span class="nx">process</span><span class="p">.</span><span class="nx">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Logged In&quot;</span><span class="p">);</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">headers</span><span class="p">);</span></pre></div>             </td>           </tr>                               <tr id="section-7">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-7">&#182;</a>               </div>               <p>Get Classlist.</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">request</span><span class="p">(</span><span class="nx">classlist</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed to retrieve classlist&quot;</span><span class="p">);</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Parsing Classlist&quot;</span><span class="p">);</span>
+          
+          <span class="kd">var</span> <span class="nx">students</span> <span class="o">=</span> <span class="p">[];</span>
+          <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span><span class="p">({</span>
+            <span class="nx">html</span><span class="o">:</span> <span class="nx">body</span><span class="p">,</span>
+            <span class="nx">done</span><span class="o">:</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">errors</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="p">{</span>
+              <span class="k">if</span> <span class="p">(</span><span class="nx">errors</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed: &quot;</span> <span class="o">+</span> <span class="nx">errors</span><span class="p">);</span>
+              <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="kd">var</span> <span class="nx">table</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;z_j&quot;</span><span class="p">);</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nx">table</span><span class="p">)</span> <span class="p">{</span>
+                  <span class="kd">var</span> <span class="nx">rows</span> <span class="o">=</span> <span class="nx">table</span><span class="p">.</span><span class="nx">rows</span><span class="p">;</span>
+                  <span class="kd">var</span> <span class="nx">length</span> <span class="o">=</span> <span class="nx">rows</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+                  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="kd">var</span> <span class="nx">href</span> <span class="o">=</span> <span class="nx">rows</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">].</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">);</span>
+                    <span class="kd">var</span> <span class="nx">username</span> <span class="o">=</span> <span class="nx">rows</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">cells</span><span class="p">[</span><span class="mi">3</span><span class="p">].</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">innerHTML</span><span class="p">;</span>
+                    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">href</span><span class="p">,</span> <span class="nx">username</span><span class="p">);</span>
+                    <span class="nx">students</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">href</span><span class="o">:</span><span class="nx">href</span><span class="p">,</span> <span class="nx">username</span><span class="o">:</span><span class="nx">username</span><span class="p">});</span>
+                  <span class="p">}</span>
+                  
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Set:&quot;</span><span class="p">,</span> <span class="nx">students</span><span class="p">);</span>
+                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed&quot;</span><span class="p">);</span>
+                <span class="p">}</span>
+                
+              <span class="p">}</span>
+
+
+
+              <span class="kd">var</span> <span class="nx">inputs</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">;</span>
+              <span class="kd">var</span> <span class="nx">parseProfile</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+                
+                <span class="kd">var</span> <span class="nx">profUrl</span> <span class="o">=</span> <span class="nx">students</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
+                
+                <span class="k">if</span> <span class="p">(</span><span class="nx">profUrl</span><span class="p">)</span> <span class="p">{</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Retrieving Profile: &quot;</span> <span class="o">+</span> <span class="nx">profUrl</span><span class="p">);</span>
+                
+                  <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span><span class="p">({</span>
+                    <span class="nx">html</span><span class="o">:</span> <span class="nx">profUrl</span><span class="p">.</span><span class="nx">href</span><span class="p">,</span>
+                    <span class="nx">done</span><span class="o">:</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">errors</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="p">{</span>
+                      <span class="k">if</span> <span class="p">(</span><span class="nx">errors</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Failed to retrieve profile: &quot;</span> <span class="o">+</span> <span class="nx">profUrl</span><span class="p">);</span>
+                        <span class="k">return</span><span class="p">;</span>
+                      <span class="p">}</span>
+                      
+                      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Retrieved&quot;</span><span class="p">);</span>
+                      <span class="kd">var</span> <span class="nx">name</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByClassName</span><span class="p">(</span><span class="s1">&#39;dhdg_1&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">innerHTML</span><span class="p">;</span>
+                      
+                      </pre></div>             </td>           </tr>                               <tr id="section-8">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-8">&#182;</a>               </div>               <p>Profile with picture
+"/d2l/img/lp/pixel.gif"</p>
+
+<p>If not
+"/d2l/img/0/Framework.UserProfileBadge.actProfile100.gif?v=9.2.1.143-8"</p>             </td>             <td class="code">               <div class="highlight"><pre>                      <span class="kd">var</span> <span class="nx">imgUrl</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;z_i&#39;</span><span class="p">).</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">);</span>
+                      <span class="k">if</span> <span class="p">(</span><span class="nx">imgUrl</span> <span class="o">&amp;&amp;</span> <span class="nx">imgUrl</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\/d2l\/img\/lp\/pixel\.gif/</span><span class="p">))</span> <span class="p">{</span>
+                        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Image: Yes&quot;</span><span class="p">);</span>
+                        
+                        <span class="nx">inputs</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;input&#39;</span><span class="p">);</span>
+                        <span class="nx">scripts</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">);</span>
+                        
+                        <span class="kd">var</span> <span class="nx">iLen</span> <span class="o">=</span> <span class="nx">inputs</span><span class="p">.</span><span class="nx">length</span>
+                          <span class="p">,</span> <span class="nx">controlMap</span>
+                          <span class="p">,</span> <span class="nx">sLen</span> <span class="o">=</span> <span class="nx">scripts</span><span class="p">.</span><span class="nx">length</span>
+                          <span class="p">,</span> <span class="nx">lastModified</span><span class="p">;</span>
+
+                        <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">iLen</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span> 
+                          <span class="k">if</span> <span class="p">(</span><span class="nx">inputs</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">===</span> <span class="s1">&#39;d2l_controlMap&#39;</span><span class="p">)</span> <span class="p">{</span> 
+                            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Found d2l_controlMap&quot;</span><span class="p">);</span>
+                            <span class="k">try</span> <span class="p">{</span>
+                              <span class="nx">controlMap</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s2">&quot;(&quot;</span> <span class="o">+</span> <span class="nx">inputs</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;);&quot;</span><span class="p">);</span>
+                            <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+                              <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;ERROR: &quot;</span> <span class="o">+</span> <span class="nx">err</span><span class="p">);</span>
+                              <span class="k">return</span><span class="p">;</span>
+                            <span class="p">}</span>
+                            <span class="k">break</span><span class="p">;</span>
+                          <span class="p">}</span>
+                        <span class="p">}</span>
+                        
+                        <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">sLen</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+                          <span class="k">if</span> <span class="p">(</span> <span class="nx">matched</span> <span class="o">=</span> <span class="nx">scripts</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">innerHTML</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/&#39;LastModified&#39;:(\d+)/</span><span class="p">)</span> <span class="p">)</span> <span class="p">{</span>
+                            <span class="nx">lastModified</span> <span class="o">=</span> <span class="nx">matched</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+                            <span class="k">break</span><span class="p">;</span> 
+                          <span class="p">}</span>
+                        <span class="p">}</span>
+                        
+                        <span class="k">if</span> <span class="p">(</span><span class="nx">controlMap</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+                          <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;ERROR: d2l_controlMap&quot;</span><span class="p">);</span>
+                          <span class="k">return</span><span class="p">;</span>
+                        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span></pre></div>             </td>           </tr>                               <tr id="section-9">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-9">&#182;</a>               </div>               <p>D2L Keeps image information in d2l_controlMap input value</p>
+
+<p>tmp[0].ctl_3[2]
+[6605, 160260, 100, "11", 29247]
+https://sjsu.desire2learn.com/d2l/common/viewprofileimage.d2l?
+oi=6605    # User Id
+&amp;ui=160260 # ???
+&amp;s=200     # Image Size in pixel Max 200
+&amp;lm=634823751847970000 # LastModified
+&amp;v=11      # ???
+&amp;cui=29247 # ???</p>             </td>             <td class="code">               <div class="highlight"><pre>                          
+                          <span class="kd">var</span> <span class="nx">param</span> <span class="o">=</span> <span class="nx">controlMap</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">ctl_3</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+                          <span class="nx">param</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">200</span><span class="p">;</span> <span class="c1">// Increasing size</span>
+                          <span class="kd">var</span> <span class="nx">profImageUrl</span> <span class="o">=</span> <span class="nx">viewprofileImage</span>
+                            <span class="o">+</span> <span class="s2">&quot;oi=&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                            <span class="o">+</span> <span class="s2">&quot;&amp;ui=&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                            <span class="o">+</span> <span class="s2">&quot;&amp;s=&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+                            
+                          <span class="k">if</span> <span class="p">(</span><span class="nx">lastModified</span><span class="p">)</span>
+                            <span class="nx">profImageUrl</span> <span class="o">+=</span> <span class="nx">lastModified</span> <span class="o">?</span> <span class="s2">&quot;&amp;lm=&quot;</span> <span class="o">+</span> <span class="nx">lastModified</span><span class="p">;</span>
+                            
+                          <span class="nx">profImageUrl</span> <span class="o">+=</span> <span class="s2">&quot;&amp;v=&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+                            <span class="o">+</span> <span class="s2">&quot;&amp;cui=&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>
+                          
+                          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Prifile Image URL: &quot;</span><span class="o">+</span><span class="nx">profImageUrl</span><span class="p">);</span>
+                        <span class="p">}</span>
+                        
+                      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Image: No&quot;</span><span class="p">);</span>
+                      <span class="p">}</span>
+
+                      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Parsing next profile in &quot;</span><span class="o">+</span> <span class="nx">waitTime</span> <span class="o">+</span><span class="s2">&quot;ms...\n&quot;</span><span class="p">);</span>
+                      <span class="nx">setTimeout</span><span class="p">(</span><span class="nx">parseProfile</span><span class="p">,</span> <span class="nx">waitTime</span><span class="p">);</span>
+                      
+                    <span class="p">}</span>
+                  <span class="p">})</span>
+                  
+                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;All Done&quot;</span><span class="p">);</span>
+                <span class="p">}</span>
+                
+              <span class="p">};</span>
+              </pre></div>             </td>           </tr>                               <tr id="section-10">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-10">&#182;</a>               </div>               <p>Logout for cleaning session.</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="nx">request</span><span class="p">(</span><span class="nx">logout</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Logout Failed&quot;</span><span class="p">);</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">headers</span><span class="p">);</span>
+                  <span class="nx">process</span><span class="p">.</span><span class="nx">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Logged Out&quot;</span><span class="p">)</span>
+                  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">headers</span><span class="p">);</span>
+                  <span class="nx">callback</span><span class="p">()</span>
+                <span class="p">}</span>
+              <span class="p">})</span>
+              
+            <span class="p">}</span>
+          <span class="p">})</span>
+          
+        <span class="p">}</span>
+      <span class="p">})</span>
+
+    <span class="p">}</span>
+  <span class="p">})</span>
+
+<span class="p">}</span>
+
+
+
+<span class="k">if</span> <span class="p">(</span><span class="nx">argv</span><span class="p">.</span><span class="nx">test</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">test</span><span class="p">();</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Starting&quot;</span><span class="p">)</span>
+  <span class="nx">crawl</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+  <span class="p">});</span>
+<span class="p">}</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 

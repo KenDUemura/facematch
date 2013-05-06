@@ -1,0 +1,21 @@
+{
+  "name": "facematchmeta",
+  "version": "0.0.0",
+  "description": "Stores meta info",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "facematch",
+    "meta"
+  ],
+  "author": "Ken D Uemura",
+  "license": "BSD",
+  "dependencies": {
+    "mongodb":"",
+    "express":""
+  }
+   
+}
